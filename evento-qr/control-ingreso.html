@@ -76,7 +76,20 @@ label.btn input{position:absolute;width:1px;height:1px;opacity:0}
 .card .no{font-family:var(--display);font-stretch:80%;font-weight:800;font-size:20px}
 .card .nm{font-size:13px;min-height:1.2em;overflow-wrap:anywhere}
 .card .tc{font:11px var(--mono);color:#5E6A64}
-.card .btn{background:#FFFFFF;color:#16201C;border-color:#D9DDD6}
+.card .btn{background:#1F4D3F;color:#FFFFFF;border-color:#1F4D3F;width:100%}
+.card input{width:100%;min-width:0;font:600 14px var(--body);text-align:center;padding:7px 8px;border-radius:8px;border:1px solid #C9CFC8;background:#F3F4F1;color:#16201C}
+.card input::placeholder{color:#8A958F;font-weight:400}
+.card .sent{font-size:12px;color:#1C7C4A;font-weight:600;min-height:1.2em}
+.evform{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.wide{grid-column:1/-1}
+.field label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font:15px var(--body);padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0}
+@media (max-width:480px){.evform{grid-template-columns:1fr}}
+.overlay{position:fixed;inset:0;background:rgba(10,15,12,.72);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:20}
+.overlay[hidden],section[hidden]{display:none}
+.overlay .box{background:var(--surface);color:var(--fg);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;max-width:420px;width:100%;max-height:100%;overflow:auto}
+.overlay img{width:100%;border-radius:8px;border:1px solid var(--line)}
 .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .note{font-size:13px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -96,7 +109,7 @@ label.btn input{position:absolute;width:1px;height:1px;opacity:0}
   <nav role="tablist">
     <button role="tab" id="tab-scan" aria-selected="true" data-view="scan">Escanear</button>
     <button role="tab" id="tab-list" aria-selected="false" data-view="list">Invitados</button>
-    <button role="tab" id="tab-qrs" aria-selected="false" data-view="qrs">QRs</button>
+    <button role="tab" id="tab-qrs" aria-selected="false" data-view="qrs">Entradas</button>
   </nav>
 
   <section id="view-scan">
@@ -126,12 +139,25 @@ label.btn input{position:absolute;width:1px;height:1px;opacity:0}
   </section>
 
   <section id="view-qrs" hidden>
+    <form class="evform" id="evForm" autocomplete="off">
+      <div class="field wide"><label for="evName">Nombre del evento</label><input id="evName" placeholder="Ej.: Cena de fin de año"></div>
+      <div class="field"><label for="evDate">Fecha y hora</label><input id="evDate" placeholder="Sáb 12/12 · 21 h"></div>
+      <div class="field"><label for="evPlace">Lugar</label><input id="evPlace" placeholder="Dirección o salón"></div>
+    </form>
+    <p class="hint">Estos datos y el nombre del cliente salen impresos en cada entrada. Escribí el nombre en la tarjeta, tocá <b>Descargar entrada</b> y mandale ese archivo a esa persona.</p>
     <div class="toolbar">
       <button class="btn" id="pdfBtn">Descargar PDF con las 30 entradas</button>
       <span class="note" id="dlNote"></span>
     </div>
     <div class="grid" id="grid"></div>
   </section>
+</div>
+<div class="overlay" id="overlay" hidden>
+  <div class="box">
+    <img id="ovImg" alt="Vista previa de la entrada">
+    <p class="hint" id="ovText">Mantené presionada la imagen (o clic derecho) para guardarla y enviarla.</p>
+    <button class="btn" id="ovClose" type="button">Cerrar</button>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
@@ -140,6 +166,9 @@ const TICKETS = [{"n": 1, "t": "EV01-9HDVKVQP", "img": "data:image/png;base64,iV
 const byToken = new Map(TICKETS.map(t => [t.t, t]));
 let checkins = {};   // token -> {at, n}
 let guests = {};     // token -> name
+let sent = {};       // token -> ISO time the ticket file was saved
+let eventInfo = {name:"", date:"", place:""};
+const pad = n => String(n).padStart(2,"0");
 let db = null, downloads = null, me = null;
 const tabId = "tab-" + Math.random().toString(36).slice(2);
 const $ = s => document.querySelector(s);
@@ -189,15 +218,22 @@ function renderList(){
   }
   if (!list.children.length) list.innerHTML = `<div class="row"><div></div><div class="who">Nadie en esta lista todavía.</div><div></div></div>`;
 }
-$("#list").addEventListener("change", e => {
-  const tok = e.target.dataset.tok; if (!tok || !db) return;
+function saveGuest(tok){
+  if (!db) return Promise.resolve();
+  return db.doc("guests/" + tok).set({name: guests[tok]||"", sentAt: sent[tok]||null})
+    .catch(err => setSync("No se pudo guardar: " + (err.message||err.code), true));
+}
+function onNameChange(e){
+  const tok = e.target.dataset.tok; if (!tok) return;
   const name = e.target.value.trim();
   if ((guests[tok]||"") === name) return;
   guests[tok] = name;
-  db.doc("guests/" + tok).set({name}).catch(err => setSync("No se pudo guardar el nombre: " + (err.message||err.code), true));
-  renderGrid();
-});
-$("#list").addEventListener("focusout", () => setTimeout(renderList, 0));
+  saveGuest(tok);
+}
+$("#list").addEventListener("change", onNameChange);
+$("#grid").addEventListener("change", onNameChange);
+$("#list").addEventListener("focusout", () => setTimeout(() => { renderList(); renderGrid(); }, 0));
+$("#grid").addEventListener("focusout", () => setTimeout(() => { renderList(); renderGrid(); }, 0));
 $("#list").addEventListener("click", async e => {
   const tok = e.target.dataset && e.target.dataset.undo; if (!tok) return;
   if (!armed.has(tok)){ armed.add(tok); renderList(); setTimeout(() => { armed.delete(tok); renderList(); }, 4000); return; }
@@ -207,23 +243,86 @@ $("#list").addEventListener("click", async e => {
 });
 
 function renderGrid(){
-  const g = $("#grid"); g.innerHTML = "";
+  const g = $("#grid");
+  if (g.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
+  g.innerHTML = "";
   for (const t of TICKETS){
     const c = document.createElement("div");
     c.className = "card";
-    c.innerHTML = `<div class="no">Entrada N° ${String(t.n).padStart(2,"0")}</div>
+    c.innerHTML = `<div class="no">Entrada N° ${pad(t.n)}</div>
       <img src="${t.img}" alt="QR de la entrada ${t.n}">
-      <div class="nm">${esc(guests[t.t]||"")}</div><div class="tc">${t.t}</div>
-      ${downloads ? `<button class="btn small" data-dl="${t.t}">Descargar PNG</button>` : ""}`;
+      <input id="card-${t.t}" data-tok="${t.t}" placeholder="Nombre del cliente" value="${esc(guests[t.t]||"")}" aria-label="Nombre del cliente de la entrada ${t.n}">
+      <div class="tc">${t.t}</div>
+      <button class="btn small" data-dl="${t.t}" type="button">Descargar entrada</button>
+      <div class="sent">${sent[t.t] ? "Descargada " + fmtTime(sent[t.t]) : ""}</div>`;
     g.appendChild(c);
   }
 }
+
+/* ---------- ticket file (PNG with event + client name) ---------- */
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function ticketBlob(t){
+  try { await Promise.all(["800 80px Archivo","500 40px 'IBM Plex Sans'","600 36px 'IBM Plex Mono'"].map(f => document.fonts.load(f))); } catch(e){}
+  const W = 1080, H = 1560, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  const fit = (txt, font, size, max) => { let s = size; do { x.font = font.replace("{s}", s); s -= 2; } while (x.measureText(txt).width > max && s > 18); };
+  x.fillStyle = "#FFFFFF"; x.fillRect(0, 0, W, H);
+  x.fillStyle = "#1F4D3F"; x.fillRect(0, 0, W, 330);
+  x.textAlign = "center";
+  const ev = eventInfo.name || "Entrada";
+  x.fillStyle = "#FFFFFF"; fit(ev, "800 {s}px Archivo, 'Arial Narrow', sans-serif", 96, 960); x.fillText(ev, W/2, 185);
+  const sub = [eventInfo.date, eventInfo.place].filter(Boolean).join("  ·  ");
+  if (sub){ x.fillStyle = "#CFE6DC"; fit(sub, "500 {s}px 'IBM Plex Sans', sans-serif", 40, 960); x.fillText(sub, W/2, 262); }
+  x.fillStyle = "#5E6A64"; x.font = "600 30px 'IBM Plex Sans', sans-serif"; x.fillText("ENTRADA PERSONAL  ·  N° " + pad(t.n), W/2, 420);
+  const nm = guests[t.t] || "Invitado";
+  x.fillStyle = "#16201C"; fit(nm, "800 {s}px Archivo, 'Arial Narrow', sans-serif", 88, 960); x.fillText(nm, W/2, 515);
+  const q = await loadImg(t.img); x.imageSmoothingEnabled = false; const qs = 700; x.drawImage(q, (W-qs)/2, 580, qs, qs);
+  x.fillStyle = "#16201C"; x.font = "600 38px 'IBM Plex Mono', monospace"; x.fillText(t.t, W/2, 1345);
+  x.strokeStyle = "#B7BFB9"; x.setLineDash([14, 12]); x.lineWidth = 3; x.beginPath(); x.moveTo(60, 1405); x.lineTo(W-60, 1405); x.stroke();
+  x.fillStyle = "#5E6A64"; fit("Válida para un solo ingreso. Presentá este QR en la puerta.", "500 {s}px 'IBM Plex Sans', sans-serif", 32, 960);
+  x.fillText("Válida para un solo ingreso. Presentá este QR en la puerta.", W/2, 1480);
+  return new Promise(r => c.toBlob(r, "image/png"));
+}
+let ovUrl = null;
+function showPreview(blob, text){
+  if (ovUrl) URL.revokeObjectURL(ovUrl);
+  ovUrl = URL.createObjectURL(blob);
+  $("#ovImg").src = ovUrl; $("#ovText").textContent = text; $("#overlay").hidden = false;
+}
+$("#ovClose").onclick = () => { $("#overlay").hidden = true; };
 $("#grid").addEventListener("click", async e => {
-  const tok = e.target.dataset && e.target.dataset.dl; if (!tok || !downloads) return;
-  const t = byToken.get(tok);
-  const blob = await (await fetch(t.img)).blob();
-  const nm = (guests[tok]||"").replace(/[^\p{L}\p{N} ]/gu,"").trim();
-  saveFile(`entrada-${String(t.n).padStart(2,"0")}${nm ? "-"+nm.replace(/ +/g,"-") : ""}.png`, blob);
+  const btn = e.target.closest && e.target.closest("[data-dl]"); if (!btn) return;
+  const tok = btn.dataset.dl, t = byToken.get(tok);
+  const inp = document.getElementById("card-" + tok);
+  if (inp && inp.value.trim() !== (guests[tok]||"")){ guests[tok] = inp.value.trim(); }
+  btn.disabled = true; btn.textContent = "Generando…";
+  try {
+    const blob = await ticketBlob(t);
+    const nm = (guests[tok]||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9 ]/g,"").trim().replace(/ +/g,"-");
+    const filename = `entrada-${pad(t.n)}${nm ? "-" + nm : ""}.png`;
+    let ok = false;
+    if (downloads){
+      try { await downloads.save({filename, data: blob}); ok = true; $("#dlNote").textContent = "Guardada: " + filename; }
+      catch(err){ if (err.code !== "declined") showPreview(blob, "No se pudo descargar directo. Mantené presionada la imagen (o clic derecho) para guardarla."); }
+    } else {
+      showPreview(blob, "Mantené presionada la imagen (o clic derecho → Guardar imagen) para guardarla y enviarla.");
+      ok = true;
+    }
+    if (ok){ sent[tok] = new Date().toISOString(); await saveGuest(tok); }
+  } finally { btn.disabled = false; btn.textContent = "Descargar entrada"; renderGrid(); }
+});
+
+/* ---------- event info ---------- */
+const evFields = {name: "#evName", date: "#evDate", place: "#evPlace"};
+function renderEvent(){
+  for (const [k, sel] of Object.entries(evFields)){ const el = $(sel); if (document.activeElement !== el) el.value = eventInfo[k] || ""; }
+}
+$("#evForm").addEventListener("submit", e => e.preventDefault());
+$("#evForm").addEventListener("change", () => {
+  const next = {name: $("#evName").value.trim(), date: $("#evDate").value.trim(), place: $("#evPlace").value.trim()};
+  if (JSON.stringify(next) === JSON.stringify(eventInfo)) return;
+  eventInfo = next;
+  if (db) db.doc("settings/event").set(next).catch(err => setSync("No se pudo guardar el evento: " + (err.message||err.code), true));
 });
 $("#pdfBtn").onclick = async () => {
   try {
@@ -330,10 +429,16 @@ renderAll();
     renderCount(); renderList();
   }, err => { clearTimeout(timer); setSync("Error de la lista: " + (err.code||err.message), true); });
   db.collection("guests").onSnapshot(s => {
-    guests = {}; s.docs.forEach(doc => { guests[doc.id] = (doc.data()||{}).name || ""; });
+    guests = {}; sent = {};
+    s.docs.forEach(doc => { const d = doc.data()||{}; guests[doc.id] = d.name || ""; if (d.sentAt) sent[doc.id] = d.sentAt; });
     if (!s.metadata || !s.metadata.fromCache){ gotG = true; ready(); }
     renderList(); renderGrid();
   }, err => { clearTimeout(timer); setSync("Error de la lista: " + (err.code||err.message), true); });
+  db.doc("settings/event").onSnapshot(s => {
+    const d = (s.exists && s.data()) || {};
+    eventInfo = {name: d.name || "", date: d.date || "", place: d.place || ""};
+    renderEvent();
+  }, () => {});
   renderAll();
 })();
 </script>
