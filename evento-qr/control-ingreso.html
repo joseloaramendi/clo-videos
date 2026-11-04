@@ -1,0 +1,444 @@
+<title>Control de Ingreso</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column for the door (phone-first); header with live counter, three tabs below. */
+:root{
+  --bg:#F3F4F1; --surface:#FFFFFF; --fg:#16201C; --muted:#5E6A64; --line:#D9DDD6;
+  --accent:#1F4D3F; --accent-fg:#FFFFFF;
+  --ok:#1C7C4A; --ok-bg:#E2F3E8; --bad:#B42318; --bad-bg:#FBE6E3; --warn:#9A5B00; --warn-bg:#FCF0D9;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111613; --surface:#1A211D; --fg:#E7ECE8; --muted:#9AA7A0; --line:#2C3530;
+  --accent:#7CC4A6; --accent-fg:#0E1A15;
+  --ok:#5FD08F; --ok-bg:#15301F; --bad:#FF8A7A; --bad-bg:#3A1A16; --warn:#F2B451; --warn-bg:#352812; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111613; --surface:#1A211D; --fg:#E7ECE8; --muted:#9AA7A0; --line:#2C3530;
+  --accent:#7CC4A6; --accent-fg:#0E1A15;
+  --ok:#5FD08F; --ok-bg:#15301F; --bad:#FF8A7A; --bad-bg:#3A1A16; --warn:#F2B451; --warn-bg:#352812; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:720px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
+header{display:flex;flex-direction:column;gap:10px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+h1{font-family:var(--display);font-stretch:80%;font-weight:800;font-size:clamp(30px,7vw,42px);line-height:1;margin:0;text-wrap:balance}
+.count{display:flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
+.count b{font-family:var(--display);font-stretch:80%;font-size:30px;font-weight:800}
+.count span{color:var(--muted)}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.sync{font-size:12px;color:var(--muted)}
+.sync.err{color:var(--bad)}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+nav button{flex:1;background:none;border:0;border-bottom:3px solid transparent;padding:10px 4px;font:600 15px var(--body);color:var(--muted);cursor:pointer}
+nav button[aria-selected="true"]{color:var(--fg);border-color:var(--accent)}
+nav button:focus-visible,button:focus-visible,input:focus-visible,label.btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+section{display:flex;flex-direction:column;gap:16px}
+.result{border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;gap:6px;min-height:150px;justify-content:center;background:var(--surface);border:1px solid var(--line)}
+.result .big{font-family:var(--display);font-stretch:78%;font-weight:800;font-size:clamp(34px,10vw,52px);line-height:1;letter-spacing:.01em}
+.result .detail{font-size:16px}
+.result .code{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.result.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.result.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.result.warn{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+.result.ok .detail,.result.bad .detail,.result.warn .detail{color:var(--fg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:600 15px var(--body);padding:10px 14px;cursor:pointer;text-align:center}
+.btn.primary{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-size:18px;padding:18px}
+.btn.small{font-size:13px;padding:6px 10px}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn[disabled]{opacity:.5;cursor:default}
+label.btn input{position:absolute;width:1px;height:1px;opacity:0}
+.manual{display:flex;gap:8px}
+.manual input{flex:1;min-width:0;font:16px var(--mono);padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);text-transform:uppercase}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.row{display:grid;grid-template-columns:2.4em minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .n{font:600 14px var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.row .who{display:flex;flex-direction:column;gap:2px;min-width:0}
+.row input{font:15px var(--body);border:1px solid transparent;border-radius:6px;padding:4px 6px;margin-left:-6px;background:transparent;color:var(--fg);min-width:0;width:100%}
+.row input:hover,.row input:focus{border-color:var(--line);background:var(--bg)}
+.row .t{font:12px var(--mono);color:var(--muted)}
+.row .st{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pill{font-size:12px;font-weight:600;border-radius:999px;padding:3px 9px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.pill.in{background:var(--ok-bg);color:var(--ok)}
+.pill.out{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{font-size:13px}
+.filters button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.card{background:#FFFFFF;color:#16201C;border:1px dashed #9AA7A0;border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.card img{width:100%;max-width:170px;image-rendering:pixelated}
+.card .no{font-family:var(--display);font-stretch:80%;font-weight:800;font-size:20px}
+.card .nm{font-size:13px;min-height:1.2em;overflow-wrap:anywhere}
+.card .tc{font:11px var(--mono);color:#5E6A64}
+.card .btn{background:#1F4D3F;color:#FFFFFF;border-color:#1F4D3F;width:100%}
+.card input{width:100%;min-width:0;font:600 14px var(--body);text-align:center;padding:7px 8px;border-radius:8px;border:1px solid #C9CFC8;background:#F3F4F1;color:#16201C}
+.card input::placeholder{color:#8A958F;font-weight:400}
+.card .sent{font-size:12px;color:#1C7C4A;font-weight:600;min-height:1.2em}
+.evform{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field.wide{grid-column:1/-1}
+.field label{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.field input{font:15px var(--body);padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--fg);min-width:0}
+@media (max-width:480px){.evform{grid-template-columns:1fr}}
+.overlay{position:fixed;inset:0;background:rgba(10,15,12,.72);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:20}
+.overlay[hidden],section[hidden]{display:none}
+.overlay .box{background:var(--surface);color:var(--fg);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;max-width:420px;width:100%;max-height:100%;overflow:auto}
+.overlay img{width:100%;border-radius:8px;border:1px solid var(--line)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.note{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@keyframes pop{from{transform:scale(.97)}to{transform:none}}
+.result.flash{animation:pop .18s ease-out}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Evento · 30 invitados</div>
+    <h1>Control de ingreso</h1>
+    <div class="count"><b id="inCount">0</b><span>de 30 adentro</span></div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="sync" id="sync">Conectando con la lista compartida…</div>
+  </header>
+
+  <nav role="tablist">
+    <button role="tab" id="tab-scan" aria-selected="true" data-view="scan">Escanear</button>
+    <button role="tab" id="tab-list" aria-selected="false" data-view="list">Invitados</button>
+    <button role="tab" id="tab-qrs" aria-selected="false" data-view="qrs">Entradas</button>
+  </nav>
+
+  <section id="view-scan">
+    <div class="result" id="result" aria-live="assertive">
+      <div class="big">Listo para escanear</div>
+      <div class="detail">Sacale una foto al QR de la entrada. Cada código entra una sola vez.</div>
+    </div>
+    <label class="btn primary" for="photo">
+      Escanear QR con la cámara
+      <input type="file" id="photo" accept="image/*" capture="environment">
+    </label>
+    <form class="manual" id="manualForm" autocomplete="off">
+      <input id="manualInput" placeholder="EV07-XXXXXXXX" aria-label="Código de la entrada" spellcheck="false">
+      <button class="btn" type="submit">Validar</button>
+    </form>
+    <p class="hint">Con un lector de QR USB o Bluetooth: dejá el cursor en este campo y escaneá; el lector escribe el código y valida solo. Si el QR no se lee, escribí el código impreso debajo.</p>
+  </section>
+
+  <section id="view-list" hidden>
+    <div class="filters" role="group" aria-label="Filtrar">
+      <button class="btn small" data-f="all" aria-pressed="true">Todos</button>
+      <button class="btn small" data-f="in" aria-pressed="false">Adentro</button>
+      <button class="btn small" data-f="out" aria-pressed="false">Faltan</button>
+    </div>
+    <div class="list" id="list"></div>
+    <p class="note">Escribí el nombre de cada invitado para saber a quién le mandás cada QR. "Anular" deshace un ingreso marcado por error.</p>
+  </section>
+
+  <section id="view-qrs" hidden>
+    <form class="evform" id="evForm" autocomplete="off">
+      <div class="field wide"><label for="evName">Nombre del evento</label><input id="evName" placeholder="Ej.: Cena de fin de año"></div>
+      <div class="field"><label for="evDate">Fecha y hora</label><input id="evDate" placeholder="Sáb 12/12 · 21 h"></div>
+      <div class="field"><label for="evPlace">Lugar</label><input id="evPlace" placeholder="Dirección o salón"></div>
+    </form>
+    <p class="hint">Estos datos y el nombre del cliente salen impresos en cada entrada. Escribí el nombre en la tarjeta, tocá <b>Descargar entrada</b> y mandale ese archivo a esa persona.</p>
+    <div class="toolbar">
+      <button class="btn" id="pdfBtn">Descargar PDF con las 30 entradas</button>
+      <span class="note" id="dlNote"></span>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+</div>
+<div class="overlay" id="overlay" hidden>
+  <div class="box">
+    <img id="ovImg" alt="Vista previa de la entrada">
+    <p class="hint" id="ovText">Mantené presionada la imagen (o clic derecho) para guardarla y enviarla.</p>
+    <button class="btn" id="ovClose" type="button">Cerrar</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+const TICKETS = [{"n": 1, "t": "EV01-9HDVKVQP", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA/UlEQVR4nO2XQY7DIBAEq6P8/8uVw4DtPSRSsLSAFFuywX2pFsO4iby5Hu+En/KPyhNSIyHgMZvPNugHAUI052wBtlE/BASj52wBtruKvfSmEdxXnucwQM52N59t2E+ZsNlxFbYRBfuK2O7+eT7biHIpsD/jFdgGlbQb2h6q1xJsXyup3ygSCdZzDbbh9bHsIBA02fZ/ipaRoxkI6q79oPJObDtHWtGtwHazv6XXW8zOebQnaompott3fS75mljHBbPveeEBkFR2C5FkKbYvlUseNcYcWW4+2918Le18Ktm13q75Or27ZQ22UT9twxwrU9bms93N13MIfson5QWV/V+K28AvawAAAABJRU5ErkJggg=="}, {"n": 2, "t": "EV02-3PHHJV5N", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA70lEQVR4nO2Yu46DQBAEqy3//y/XBbOLSQi86PBgmQDtqpNqzYMWkYPncST8lAuVJ6ROAsHt9nm2RT8IEIK+bg3YVv0QECSjSNiC7bzioXIVwVnl+TqGUaBrCf7BT5mY/WYXtlU/Y6VFjPPWgG1FyW5k8gXz86hNHUJ13JijJmxvK3HWKGY6sgfbaj6YMyMpb7lvPnhADY6QVK9FbcO2pFjNJpo692F7T9ntt9Fq8/15tkU/W6JOfVFvn9/UStabm3xDvg5jaXdhO6mIMTPL9WJbUWrHBdF799tWk7EPvG/e2edrxpKT+9Ynv/9VrZU/80FVk7L/7zIAAAAASUVORK5CYII="}, {"n": 3, "t": "EV03-PNHPPMEW", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA8klEQVR4nO2Yyw7DIAwEZ6v8/y9vD8aIHjjUqQpICRKJs5exYvyIzOR6zYRH+aNygeLJgHC31rMV/cEAQhbu1gZsVX8QGMKdtDZgK/vTrs/UsJ7tpiIkLSX4gXJBfhi3QPMubBUFZ5S5rXy9nq2iyDNjPVtRUVsQtUhx24KtoliWZRQ76OB8jd2LaB4fc/T5iUgzyEPrswFbVbEZvMLh1h5s3ypDSpNjk9Gx/WiPtxZwFkfH29BfQ8t10ZGuZ7vZXwsjZyXagO2m0gKOlre3YqsoQjkE+ex5LqspioH74Hx90X8gCMcJ8sHztjxT1rM9CrwBdMtYhq+67qQAAAAASUVORK5CYII="}, {"n": 4, "t": "EV04-PVLPENHM", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA60lEQVR4nO2XMY7DMAwEZwL//8t7BSXFTYooSCQb58YitpkF5SVtePE8Xgn/yg+VA6xTAMmo1rNN+iFQrsypWs826webi0hGtZ5t2k97uq3fEnxVcTnBh8oBvSu2d3Zhm/XTmxJjRrWebUbxfvNUEEVUL96fR/9e4sg392GbUgRjD4NY1vZge1c5oK5YGaqMyx5ss/ctCRjERJqrLdhmlVB2AOKF9zeS56EdQ0jWs324X9c0jbWSbsA2rWhPBGsaXXe/PimmbXAVCluxzShphrx8fzJCwfbbvQ/bm8ppv37mda47f264X99K+QM8M06b2ooLAAAAAABJRU5ErkJggg=="}, {"n": 5, "t": "EV05-7S4W2DYY", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA9UlEQVR4nO2XQQrDMAwEZ0v//+XtQbKbQFuIHSIHaghI7GVEJHkt8+U8vgl/5ULlCYrIsvzOFmAbrAcDCGTkntWzjdaDsqb4OZnVs00qbr1WRnCuIuzPylUEJyhPaM3WloFXYRutJ9tMltWzBdhGFG1brO+FKwnOVbA3Y+PIAbuebabfDGLnferZBhVjW9FrRljrsI0qijbTZtctw3ZcEUZCOIKV2A4q3b+Z3NVWGIV6ttH9lkHbdY6wnm3WX+d3az+699dATtCd3z+742YZ6tkm62ltl1drPduwYvcRIibotvfP1l8Tz+10CPVs0/66hOCv/FJeHc1SiQuTTQYAAAAASUVORK5CYII="}, {"n": 6, "t": "EV06-6W477NPR", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA8ElEQVR4nO2XywrDMAwEZ0P+/5e3B9mOKaRQu1Q2RJdE7GXERo/I3MRxJzzKH5UTFG9Glq8sn22wHgwgMO6yfLbReqIWBJZrtgDbrOJiTh7BrxUpm2BWOaG5UqaBV2EbraeaYrnL8tlGFF0dI+gbKJ9tdP84Kont06rKZ5vsHwFlp8orsA3W49g8cSHQPsF8tgl/FIvU1zhYgG1QkQRIxSgcbi3B9rVy0o42ufXQGmyT93XMt9ZB+WyT97VcL9KN/TmgdlCYY+G95/V7aHt/SpT94533zwFglxkXD23+f1oGnLr7YNv+6e7rJIJH+aS8AFjpTqKwYQtbAAAAAElFTkSuQmCC"}, {"n": 7, "t": "EV07-6X9AJU9J", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA8UlEQVR4nO2Y22rEMBBDj5b8/y+fPvjSLHT7YJe1XTYYwqAXDfJolERePI9XwAd5I4JNIBHoleu5jSAXtYdg5LvagNtoPwSEALFVG3CbRCTxR+RdDP4YEbOWwTxyQTOBPFvCem6j/TRRjLFX67mNIPeJif9iflKcLRhCOcf6NdqnxloonrpPHwBR+uTExGP1uepb0nYqEnfgNuHXqZvnZnDruU36W6gylSi3ntugPlWPkkPF4+9by9d1hE7XpydqasbehduMv0GRqFvcBtwmkUiJCZiz90+5bMb6PXfwPn3+f6BQ8s+peeeeqNcw+CC/IV9AJmJ/KK5IRQAAAABJRU5ErkJggg=="}, {"n": 8, "t": "EV08-HVXH3YAE", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA90lEQVR4nO2YwQqEMAxE3yz+/y/PHtJaPQhrZG0EPUjLXN6QMInKHDyfI+FVblQWUJwsI6+3AmxJPxhAWCD3WwG2tCIJoHuJWxG2k8oyjuqG7iX4mx8QG0Pz2dJ+uolIA1dhy/ppkYblzW0+W0bRaLBdt1Vgy84fgxxlibfRg+ePW7KtkzSKNp8tvR94rQsGZLkCW3o/ULSYxIiDAmxZRQ47GAu3atVgO6vs861ltnhsv+ExTN32HdvY89mu7tdju350vvVJ2nKuh918touK+0wNR6XYfla2+7XMpunms13er6PTFCk3n+3ifi3HNzdP7je9/6tKK1/vW1OZFxBf/QAAAABJRU5ErkJggg=="}, {"n": 9, "t": "EV09-FA6H6HNC", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA7klEQVR4nO2XwQ6DMAxDnyf+/5e9Q0LHJjGJgmg6rae272IrqQkyO+uxB/7kRoLXAhkD7eTx2nrIQnoQ6OVIFbR1E0mEEbVTFW39RN4jdym4lmyfzxgFF5AFmosskKtoO59vnj7fNo/mV96PkJDSjvKihrbDRI6QjrC2jLBwBW39xJZav4WpMtqOkSyIeS9VCW2deR3tJUxuwuB4bafzLYqVd+O1ddZHsWvGhGDW+mzn6+w8mDgPtvO1womN6mjrJ0KOvGP278+6hMExKlTTdoDY8a9gFHFdSNtBkv1FPB9iOkDT9tvHUD1AwZ98I09rB1WFdgC33QAAAABJRU5ErkJggg=="}, {"n": 10, "t": "EV10-MMGHMG9C", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA90lEQVR4nO2XsQ7EIAxD7ar//8vvhgR0HXpSaXUBqWUheLFFHFyjk287A17kj8guOXZIkulVPbdBPalEjl1WE3Ab1ZNKmpNSVz23u4hdzeBRxN1KVQweQHapdRqSu4Fm4DaCiGYbcrXjem4jiDkr6rkNIs4lIav7aApulxEB+exku4GAVfst/IOkrio2i+rZ2lyD7DfizubgdhkxikQQT0+rpuB2c76ZLGI01HMb1NMTtZGRHHaq53YzXwuDid5b9X6+8rWVPedJuN1EEGkhtOx8O+ZrCVuItf/nMl87ZkFknwm4jerJAed8UfHC93OI1CUMXuQX8gE4K2Nsy9NM/gAAAABJRU5ErkJggg=="}, {"n": 11, "t": "EV11-JX5286MR", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA/ElEQVR4nO2YQQrDMAwEd0v+/+XpwbLrFFJaBSqn1AeDspcRsldyjA7W7Uj4K19URC8QktCIqGfLKJtaJrIwfkQLsGXzkaM6LaGI6tnS+bRlyZM71LOdVpCLCU4rm6RhAtMFWoEtm08vCtYU1bNllOnGeN9a69my/Qd632H6Vs+WViwJgNZR27lbhC2hWI5NEpYxq7B9qmxqPuBopvLl/Q2jnhAeTaieLaugthkZeoXWYPtU2UbDQUStEGYBtrPztbq3+eLzqOO4GesH7k+s5gvqjrAU29vK9F6IF6rDEOrZzs7X47GALusHu/8HMcbBdf8fPA3VBQR/5ZVyB0U/Ynn6jNkHAAAAAElFTkSuQmCC"}, {"n": 12, "t": "EV12-LVYAMSVK", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA60lEQVR4nO2WsQ7EIAxDn6v+/y/7BgKlQ2+gp0JORa1E5MWRE2OZi7NdAS/yIIKrQMZAqzyf2wiyEz0Ic3SkFbgNI5KA9ksLcRtHLF8gTzH4NaLpDG4jO1QTkNVbwnxuo/10ssitms9tBDntjOiq+dwGEYWrASi+tH4tI6ssTcgjI6/AbXzeys7Ud1VYXoDboB/IR8wJh8urzwaWjCTK2Aknzgedv5X35w/mrdz6VJp33s75GodMmfWB5tdFq8z7s5+qeH9M6nmLUwOCizHM53YzX5uwO8tp806Xr2Uolm0twe12vp7C4EW+IR/0TE2eMsT3mgAAAABJRU5ErkJggg=="}, {"n": 13, "t": "EV13-QQ33DX7A", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA9klEQVR4nO2YwQ6DMAxDn1H//5e9Q1KoJu1A2SCVxgER+WLLidMi8+HZPgF/5EakgeLLMvJeFeA2qQcDCCMfVQFus3pQqghBWT3PbVpPPLtD9zL4JaLHGVxFGvRmA6yjep7brJ7uivv4FOE2gwwDo8GoGxl8f/8YZIGV5hitun82QAjZJtePVYfbWaSlGyjGx8KyXIHbvD+EKgn2karB7SzSwhmINrMWz+sx3xzSjFi234bzNYAj6NbON9vOKMARd2W4nUWG87XSnEiFAtwuIscpDj3D4AtIe6tjGa17/9kA7PRG/bX0/TQDTvT943X7Tf//VaWRF6ciUpvhcTs6AAAAAElFTkSuQmCC"}, {"n": 14, "t": "EV14-LKE6TFZQ", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA8klEQVR4nO2XwQ6DMAxDnxH//8veIVlhEkxai2g7wamRL89KmxiZk285Ex7lRmUFxckycqkGYKv0g6G42qr+bLV+ULhQvKWs+rM1KjbWoXIXwbWKdKbcRXCBskI+GZyGPApbrZ/siyxrGwz92WoUeX8WW9mfrdJPWToGYWTNu38WiCbZFuA/uG9ytMhREL76szX0R4QvhDB4GLYflTVvW4SCDAjWEGyN802mtGnq/sTJRJuELM36fj7z9XudzptHD/J1zLoB2Kr95BcLSFP/L+z8xPoBx0Doz9aYr/PCefb9U/I1liPEjcHWmq/7EDzKN+UF0AxSnX1y2zoAAAAASUVORK5CYII="}, {"n": 15, "t": "EV15-UZLNE66Q", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA7klEQVR4nO2W0YrEIBAEq5b9/1/ue1CT7EOOQ49Vl5UQlCLQw0zaNtysxx34kjcS0hoUSDhOma+thzyh1CABz9MC2nrrQa7FlNMC2gZJEpyq4J+J5Ia8S8E4eUL9ZTBll1W09dZzDJnxHLn52nqIlxGT68DN19ZJREABrM/efg0mzQ5iYlbQ1kliPMxNRLNtfx60jpSAEAl796cEA1GIf/xmZZKUV2zV7Dtvr/n6uFDzCflaSAmmMQtoG8zXRGx2t4K2gfsHOLOCYWt/q6sEBAm6rR9c8nVqHs3O/nbJ162QmrHnaxvN13MUfMlv5AcVeVmQJ+weiAAAAABJRU5ErkJggg=="}, {"n": 16, "t": "EV16-YKYUW8ZM", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA8klEQVR4nO2WwQrDMAxDn0b//5e1g51sMDqYA3MKDT3U6PKEE9kyJ+dxJtzKH5UDFH+W4VVtwFb0Q/qwwLPagK3qhzAijDyqDdjKfuIY8ZYO/Wyrimz1EqwrB+STQfnnXdiqfkZTLMuz6merKPJZ1c9WVIQACUD5XTavZZSjNHN6xHY/W1mRQXLaQfKV+0P2ZM7U6Fc/W70/kLP08nnwlmhyPJ18QP1s5TwAwMJx566cB5/7tRwPqJ9tcb/OuWPFFtfPtrhfzzEUyd3PtugnA5u8eP1sZcUeWS07U2EXth8VPALbGHuacz/b+n7dQXAr35QnXIRbjN06y5gAAAAASUVORK5CYII="}, {"n": 17, "t": "EV17-V476GBBD", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA9klEQVR4nO2YwYrDMAxE55X+/y9PD4q86qGlq8DKWZpAsJnLG2TL42C9eG6vhK/yh8pdIkYWkrxm82xNP7IUrix+ZvNsXT/pwrjM5tnOKlmcOYLzyr2MLYqheba2nzCR5fEubF0/R0uTEV6zebaOQtkxdbXtwNZUkBBRG7h4fUIxsoRlY9iK7XdKHjmmtDfMlfMBkrMZOHLCFmwn6hNJp9ZoA7b+eeqV3dLZVdeb7KeB8/U828l8HT1Ox3cDtrYCeVtAEvyPfI2Pa0Nc6rZi6yiOxMPR9LZi+1gp+VoyeHXsebbm+ZN/DFjXhgvvn5qvZwi+yjvlAYIJU5IQlwtZAAAAAElFTkSuQmCC"}, {"n": 18, "t": "EV18-6Z4TEL8V", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA/0lEQVR4nO2WwQ6DMAxDnxH//8veIWnHNDGJoq1hggutfHmR08QyO9+yJ9zKDxXcDDI29Jvns40oK1mDsMD9VoBtWJEECKN+q8J2UFmfR/Nstx8SfE+JlptJcF5ZobkiXjyazzZaTzPFstxv89lGFHl71j+8H+VUy1P7l2A7rESDtQ0EsjByBbbhevpYa7vUcgG2QcWWI+44+83X9WchKkAWYPWVWoPtqLKZaK0exdyezza4f/LxGKMcD9ftt7d8rfSoANtw3smJbfXZXYLtZL5uRmWGm892sp7Yp9FuXLXfFgA7PBGyFfGgCttBZZOvFc5kBCrAdjZfzyG4lU/KA8vjWpMJE3PmAAAAAElFTkSuQmCC"}, {"n": 19, "t": "EV19-QRSRQUYX", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA+ElEQVR4nO2WQY6DMBAEq6P8/8u1h7EhF1YbO1obKVxgaCHVaJh2Ry6ux5XwVf5RwT4gATkq17ONKE+qE4KEs9qAbbQfAkIkHtUGbJOKoSa0jODDyrk9qwjmlSe0lSHaTGETttF+jp8sxqNazzaixKtqPdugEgIklB+kvdmC7W2ln6e1OwqieNfzNJ5b08/VYNyAbXg+gra8I3Lj+TygYkFSneRP32yt1ExaPBCIt/WD88Cx3yubbsD2gXxt2fV9/eAlX7enPqn1bMP9tKvSQfOFDdgmlZiyOcht/eAlX9udu/649WyT+TqCwbZA69nm8/UKgq/ym/IDtVNldDI2v/AAAAAASUVORK5CYII="}, {"n": 20, "t": "EV20-5MMY33QM", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA9klEQVR4nO2XwYrDMAxE35T8/y+/HiynuXRhnVLbUBOIlLmMkDyaRN6cxzvgh3wROSAtMoBntgC3wXoQIAiJPVuA2zCSBAjxla3CbRwxfdhmMfg0ou+QbzG4jRxQF4jYIlfhNlrPOWUxp8AtwG0Eidf4ms3nNog0GWiilnq21euj3rGmTcC4ArfReUv5Aul3yezqDx6UoGnbqGLr0hrc/otEUq7NYLcIO9dzhnS5lm3n7bVwDFy96XxuH/DXQszGenAAF21L79MK3O7sn3a8BPO53awn1SNjtv4/rbZIk4cYt/Y7dWFi7aD2ZT63u/56DoMf8hfyBACUT6AvlGQpAAAAAElFTkSuQmCC"}, {"n": 21, "t": "EV21-K8K68LML", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA+ElEQVR4nO2X0WrDMBAEZ0L+/5e3D3dxUmgKuZRKhlgIS96XWSStzoYnz+WZ8FH+UbmCNQogOWbr2YZ+CIAI8ZhtwDb1Q7kImGO2AdvYTz/yGA7r2d5UJLqU4A+UK/SRIdYCZRe2iUJueyzdbp/Xs00U8/N4B7ahYjdSd5H12oJtpBhTa2P0lnN7sL2qtA8ioXrfquvZhn4qo+++OPN9eqGSDUU74LIP26vKQ6YZ02fH8+83gsEcZc96tjfrazCRVCZswDZWtNx0dye2uRJirLDOZmwTRYHacDn3/9y9vrZjYQu2qZ8OOKtGSPC86/O9pl5B8FF+U74ApDVXkptiMhUAAAAASUVORK5CYII="}, {"n": 22, "t": "EV22-C2JDZJQ9", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA7klEQVR4nO2WwQ7DIAxD7Yn//+W3QwOlmjqtIC1UKrfgy4swiY1OzutMeJQ/KqI+EEJSq8hnG1GKogcLo71agG20H1n1bUyr8tkmFcvOJXiUj1OkNgQsvFf5bKP9VJdhdVU+24jifZ9ah92azza6f4Bohe4un21YiV8D2nrzQmzXFYSx4+dYMmYRtsvKlndQtVzEH27sNyThCDuW4hstwXZZOcw3SRij+/qttIWDsKrrzAJs0/labFvI982jXb6u2dqrsE0quDnPq7H9rJS+YPOebzzf+nwdTouW8tkm87VRmwlLsE3unySCR/mmvAHNZ15yRNt6dQAAAABJRU5ErkJggg=="}, {"n": 23, "t": "EV23-3M4MY4TX", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA9ElEQVR4nO2XwQ6DIBBE3zT+/y9PD4uIaWzqmpQ1kYOymcvbAMMgczBeR8Kj/FHB6wIZbHrl+WwZZYHoQVjIvSrAlu0HwXCMWjWf7aIiC00leJSPsUDfbMLaqvls2X7WTWYxVPPZMoo2I9i7QgG25PrI4QWwLo6RC7BlFQFyu0yNo7cabGeVlg+2ZojfXfOBHEcoPuDYcq7AllcEQvIY4qqwnVOWCKLbFdTn89my/hazdnIQlm/rb2O+Dueuw3YxXytm9847g9JfdnG5lmL7WVnGwmAUz7oCbGnFbkdINL++9fu0WYC8i9jz2S7m60kEj/JNeQM9tFWBkutsUAAAAABJRU5ErkJggg=="}, {"n": 24, "t": "EV24-JBS2R7AZ", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA70lEQVR4nO2XQQ6DMAwEZxH///L2ECflwgG3JQ4qkVDCXsayHS8yJ892JvyVG5Ud1HYGkMdpPlsynogEtU2cCrBl40Fg6KlppwJs6Xji6QHdS/AzRafKXQRfUHaIlsFRaK7CllFwH0CO1T/PZ8soet48VSzGG1Vhu6zI9MEDiivONdjS/fOeo+49tHT/6Gh2HMf5bGnFo4eMpZXrrfmDY81ZbRDNZ0vW23DUwgevPZ/tQ38NDo8gLZufDUAS7TqQ6QkrwpZXjGU1B+dibBlFCCyplV0ptmuKHRcbEcy6fmdn/PjI4OiiZfPzQH/9KOUFZtRXhQOJ8WcAAAAASUVORK5CYII="}, {"n": 25, "t": "EV25-XSZ2CWEQ", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA8klEQVR4nO2XwQqDMBBE3xT//5enh03WCLWUKE0CKtLIXN6w6+5U5uR6nQmP8kdlA8XJgHC+jWfr9IMB1PpCM7D1+kFgsNKLp2C7rNRmG0dwpyJnzw0iuEHZoHwyuHmmYOv1U4oiYzlLNJ6tR5E/n2dg61RUbsr3o6jYFGy9SjSaVQb2uvM65oHCRPw4NtB4th4Fx0izMc5RZ3s8W3/ekVFrZw62i/NNmXYW7rd94VQ3LF2fJl8jbJWVump9mnwtQHtCGM92UXG1Y+PJ2H5Wtv0oyFWkVfvtBWDXXK0Y2+vmnWO+zj207P/tY6YeQfAo35Q3CO1XjfQhocIAAAAASUVORK5CYII="}, {"n": 26, "t": "EV26-W9EL27BX", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA7klEQVR4nO2XwQ7CMAxD/RD//8vmkLSMA0ikEunQqh1W+fKsNk6K9Wbd3gmX8kPlLhF/lpA8d/1sRT+yFK6Mn7t+tqofES4IQ7nrZyv7yfUaDf1sqwqjlNoI1pW7NA4Gx493Yav6maeC8dz1s1UU/q+fIiHy4/zngxzHNNup92Ar1k+UDHK4cdZRP9tCHhiHIc946GerKs7ZTWBiOvAubN8qh3zj0IjOfN/GRJ13LsfSDdgW5+vspqOn9rOVFRivBaSIum3Y6kqG9cjtrdgqigWRdCevnzFRW+DxQt2AbXG+JnINI/9D/2kiuJRPygMYPU2mCD9EOwAAAABJRU5ErkJggg=="}, {"n": 27, "t": "EV27-ZJNL49PE", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA9klEQVR4nO2WwQrDMAxDn0b//5e1Q5y2g3VQZzQuNJfE6PKMk0gyB+t1JDzKhcoCaicLvFUF2JL9YABhkNeqAFu2H2IybrNpVQG2QcXC35WrCP6tuL+eaQTDygLxZJBlr1UBtmw/u6FoG9F8towiH1Xz2ZKKECDFqe8l2FKKwkqxLRCWq7CdVdTtk9bFdpzPlr1vrQWDULfWImw5RdhCGLccV4jtpLJ0v3EEBPcgN59tMF+DFYH0vvftM18TP8J9/4Ndvu5OFC9oPlu6n1iK8cjc+r7FCvsJSy3ANpiv3YJBfHIF2AbzdW8kIvZ8tvF8PYPgUX4pbz2CT6RnjZHNAAAAAElFTkSuQmCC"}, {"n": 28, "t": "EV28-X4FURFR6", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA8klEQVR4nO2YQQ7DIAwEZ6v8/8vbA5iQQ6QWqhqkJIfI2ctYNmsLmZvndSc8yh8VHAVyfeN3PtuIckDJQVjGLVqAbTQfVLJw+dYon21SUdd8OQQ/VmQpl2BeOYBmArLOKJ9tNJ8oikUX5bONKDpPjLjM1ny2wfrI0WlRHCMvwDaqqM6e6tcuua3B9q2C7WLTrrPUYLzxfqBychSGwM71ecUQjZOzuV9f/A2o1fEKbMP9BoCxWjLb+lu/X5/b9b77aLdfy+o3hHy2ScWt8dBqbB8rRx8YjKpF5LPN79cAxRZ29YPr/QGxKGx7fyDfKflsjwJvDDZedBovHQAAAAAASUVORK5CYII="}, {"n": 29, "t": "EV29-A5Y5DFV9", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA80lEQVR4nO2XMRKDMAwEdzP8/8uXQnZIQ4HDxCYTXCBzzWosTrLh4HkcCX/li8oGVhRA8trNZxvMhwCIJPtuAbbRfBACwZi+W4DtAiWHyrcIrlMEnUpwgbJBP5W0QssqbCNKeQBA2uqf57ONKP5eP7UtqF5kvZZgO60YsP05xkjamc1nG/YDqK4jRJsxzGcbVUJIgsEyhGQVtrPKBqYqjiq2e/v1m7/ZR7dKaj7bYD5v8zVGcnc/6BM1ZQm39wNUanhznxAWYTupbHvYOlCP57N9Ol+3WtPk3ve5fiZSbuAabKP5NIOz3VEpR5jP9p+vf095Ati9VJGg0GcwAAAAAElFTkSuQmCC"}, {"n": 30, "t": "EV30-REYTQNEJ", "img": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADIAQAAAACFI5MzAAAA9ElEQVR4nO2YMY4DIRAEq0/+/5fLAQN2ssGBZVjJkOyokxoNNK2NXKy/K+GnfFF5QNqXEHxV+9km+0GAEEzs1QFss/0QEEybTasOYJvuZ6x3c9jPtqhkTGgXwQeUB/SxSHBUB7DN9lNDiZhhcAewzSjxqtjPNqmkNvX6pE3sCLZ/KyiAWHdHRNX9bAt+HcdZs16g/WzT9yeYbgXd5Q5gm1Wqp6ROnzmHbUapK4NIe1Fz5/zWE7VlbGXb+9kW8zW0o+ad/eAtXwfJK8LtZ1vM1w6fI57Atp6vy9vinf1g5Ou0CbV2DmBbz9fYstx955Pf/6qjlSccT1WdGpYeKQAAAABJRU5ErkJggg=="}];
+const byToken = new Map(TICKETS.map(t => [t.t, t]));
+let checkins = {};   // token -> {at, n}
+let guests = {};     // token -> name
+let sent = {};       // token -> ISO time the ticket file was saved
+let eventInfo = {name:"", date:"", place:""};
+const pad = n => String(n).padStart(2,"0");
+let db = null, downloads = null, me = null;
+const tabId = "tab-" + Math.random().toString(36).slice(2);
+const $ = s => document.querySelector(s);
+const fmtTime = iso => new Date(iso).toLocaleTimeString("es-AR", {hour:"2-digit", minute:"2-digit"});
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- tabs ---------- */
+function show(view){
+  for (const b of document.querySelectorAll("nav button")) b.setAttribute("aria-selected", b.dataset.view === view);
+  for (const v of ["scan","list","qrs"]) $("#view-"+v).hidden = v !== view;
+  try { localStorage.setItem("tab", view); } catch(e){}
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => show(b.dataset.view));
+try { const t = localStorage.getItem("tab"); if (t) show(t); } catch(e){}
+
+/* ---------- render ---------- */
+let filter = "all";
+document.querySelectorAll(".filters button").forEach(b => b.onclick = () => {
+  filter = b.dataset.f;
+  document.querySelectorAll(".filters button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  renderList();
+});
+const isIn = t => !!(checkins[t] && checkins[t].at);
+
+function renderCount(){
+  const n = TICKETS.filter(t => isIn(t.t)).length;
+  $("#inCount").textContent = n;
+  $("#barFill").style.width = (n / TICKETS.length * 100) + "%";
+}
+const armed = new Set();
+function renderList(){
+  const list = $("#list");
+  const focused = document.activeElement && document.activeElement.dataset.tok;
+  if (focused) return; // don't clobber a name being typed
+  list.innerHTML = "";
+  for (const t of TICKETS){
+    const inside = isIn(t.t);
+    if (filter === "in" && !inside) continue;
+    if (filter === "out" && inside) continue;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<div class="n">${String(t.n).padStart(2,"0")}</div>
+      <div class="who"><input id="name-${t.t}" data-tok="${t.t}" placeholder="Nombre del invitado" value="${esc(guests[t.t]||"")}" ${db?"":"disabled"}><span class="t">${t.t}</span></div>
+      <div class="st">${inside ? `<span class="pill in">Entró ${fmtTime(checkins[t.t].at)}</span>` : `<span class="pill out">Falta</span>`}
+      ${inside && db ? `<button class="btn small danger" data-undo="${t.t}">${armed.has(t.t) ? "¿Confirmar?" : "Anular"}</button>` : ""}</div>`;
+    list.appendChild(row);
+  }
+  if (!list.children.length) list.innerHTML = `<div class="row"><div></div><div class="who">Nadie en esta lista todavía.</div><div></div></div>`;
+}
+function saveGuest(tok){
+  if (!db) return Promise.resolve();
+  return db.doc("guests/" + tok).set({name: guests[tok]||"", sentAt: sent[tok]||null})
+    .catch(err => setSync("No se pudo guardar: " + (err.message||err.code), true));
+}
+function onNameChange(e){
+  const tok = e.target.dataset.tok; if (!tok) return;
+  const name = e.target.value.trim();
+  if ((guests[tok]||"") === name) return;
+  guests[tok] = name;
+  saveGuest(tok);
+}
+$("#list").addEventListener("change", onNameChange);
+$("#grid").addEventListener("change", onNameChange);
+$("#list").addEventListener("focusout", () => setTimeout(() => { renderList(); renderGrid(); }, 0));
+$("#grid").addEventListener("focusout", () => setTimeout(() => { renderList(); renderGrid(); }, 0));
+$("#list").addEventListener("click", async e => {
+  const tok = e.target.dataset && e.target.dataset.undo; if (!tok) return;
+  if (!armed.has(tok)){ armed.add(tok); renderList(); setTimeout(() => { armed.delete(tok); renderList(); }, 4000); return; }
+  armed.delete(tok);
+  try { await db.doc("checkins/" + tok).set({n: byToken.get(tok).n, at: null, undoneAt: new Date().toISOString()}); }
+  catch(err){ setSync("No se pudo anular: " + (err.message||err.code), true); }
+});
+
+function renderGrid(){
+  const g = $("#grid");
+  if (g.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
+  g.innerHTML = "";
+  for (const t of TICKETS){
+    const c = document.createElement("div");
+    c.className = "card";
+    c.innerHTML = `<div class="no">Entrada N° ${pad(t.n)}</div>
+      <img src="${t.img}" alt="QR de la entrada ${t.n}">
+      <input id="card-${t.t}" data-tok="${t.t}" placeholder="Nombre del cliente" value="${esc(guests[t.t]||"")}" aria-label="Nombre del cliente de la entrada ${t.n}">
+      <div class="tc">${t.t}</div>
+      <button class="btn small" data-dl="${t.t}" type="button">Descargar entrada</button>
+      <div class="sent">${sent[t.t] ? "Descargada " + fmtTime(sent[t.t]) : ""}</div>`;
+    g.appendChild(c);
+  }
+}
+
+/* ---------- ticket file (PNG with event + client name) ---------- */
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function ticketBlob(t){
+  try { await Promise.all(["800 80px Archivo","500 40px 'IBM Plex Sans'","600 36px 'IBM Plex Mono'"].map(f => document.fonts.load(f))); } catch(e){}
+  const W = 1080, H = 1560, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  const fit = (txt, font, size, max) => { let s = size; do { x.font = font.replace("{s}", s); s -= 2; } while (x.measureText(txt).width > max && s > 18); };
+  x.fillStyle = "#FFFFFF"; x.fillRect(0, 0, W, H);
+  x.fillStyle = "#1F4D3F"; x.fillRect(0, 0, W, 330);
+  x.textAlign = "center";
+  const ev = eventInfo.name || "Entrada";
+  x.fillStyle = "#FFFFFF"; fit(ev, "800 {s}px Archivo, 'Arial Narrow', sans-serif", 96, 960); x.fillText(ev, W/2, 185);
+  const sub = [eventInfo.date, eventInfo.place].filter(Boolean).join("  ·  ");
+  if (sub){ x.fillStyle = "#CFE6DC"; fit(sub, "500 {s}px 'IBM Plex Sans', sans-serif", 40, 960); x.fillText(sub, W/2, 262); }
+  x.fillStyle = "#5E6A64"; x.font = "600 30px 'IBM Plex Sans', sans-serif"; x.fillText("ENTRADA PERSONAL", W/2, 420);
+  const nm = guests[t.t] || "Invitado";
+  x.fillStyle = "#16201C"; fit(nm, "800 {s}px Archivo, 'Arial Narrow', sans-serif", 88, 960); x.fillText(nm, W/2, 515);
+  const q = await loadImg(t.img); x.imageSmoothingEnabled = false; const qs = 700; x.drawImage(q, (W-qs)/2, 580, qs, qs);
+  x.fillStyle = "#16201C"; x.font = "600 38px 'IBM Plex Mono', monospace"; x.fillText(t.t, W/2, 1345);
+  x.strokeStyle = "#B7BFB9"; x.setLineDash([14, 12]); x.lineWidth = 3; x.beginPath(); x.moveTo(60, 1405); x.lineTo(W-60, 1405); x.stroke();
+  x.fillStyle = "#5E6A64"; fit("Válida para un solo ingreso. Presentá este QR en la puerta.", "500 {s}px 'IBM Plex Sans', sans-serif", 32, 960);
+  x.fillText("Válida para un solo ingreso. Presentá este QR en la puerta.", W/2, 1480);
+  return new Promise(r => c.toBlob(r, "image/png"));
+}
+let ovUrl = null;
+function showPreview(blob, text){
+  if (ovUrl) URL.revokeObjectURL(ovUrl);
+  ovUrl = URL.createObjectURL(blob);
+  $("#ovImg").src = ovUrl; $("#ovText").textContent = text; $("#overlay").hidden = false;
+}
+$("#ovClose").onclick = () => { $("#overlay").hidden = true; };
+$("#grid").addEventListener("click", async e => {
+  const btn = e.target.closest && e.target.closest("[data-dl]"); if (!btn) return;
+  const tok = btn.dataset.dl, t = byToken.get(tok);
+  const inp = document.getElementById("card-" + tok);
+  if (inp && inp.value.trim() !== (guests[tok]||"")){ guests[tok] = inp.value.trim(); }
+  btn.disabled = true; btn.textContent = "Generando…";
+  try {
+    const blob = await ticketBlob(t);
+    const nm = (guests[tok]||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9 ]/g,"").trim().replace(/ +/g,"-");
+    const filename = nm ? `entrada-${nm}.png` : `entrada-${pad(t.n)}.png`;
+    let ok = false;
+    if (downloads){
+      try { await downloads.save({filename, data: blob}); ok = true; $("#dlNote").textContent = "Guardada: " + filename; }
+      catch(err){ if (err.code !== "declined") showPreview(blob, "No se pudo descargar directo. Mantené presionada la imagen (o clic derecho) para guardarla."); }
+    } else {
+      showPreview(blob, "Mantené presionada la imagen (o clic derecho → Guardar imagen) para guardarla y enviarla.");
+      ok = true;
+    }
+    if (ok){ sent[tok] = new Date().toISOString(); await saveGuest(tok); }
+  } finally { btn.disabled = false; btn.textContent = "Descargar entrada"; renderGrid(); }
+});
+
+/* ---------- event info ---------- */
+const evFields = {name: "#evName", date: "#evDate", place: "#evPlace"};
+function renderEvent(){
+  for (const [k, sel] of Object.entries(evFields)){ const el = $(sel); if (document.activeElement !== el) el.value = eventInfo[k] || ""; }
+}
+$("#evForm").addEventListener("submit", e => e.preventDefault());
+$("#evForm").addEventListener("change", () => {
+  const next = {name: $("#evName").value.trim(), date: $("#evDate").value.trim(), place: $("#evPlace").value.trim()};
+  if (JSON.stringify(next) === JSON.stringify(eventInfo)) return;
+  eventInfo = next;
+  if (db) db.doc("settings/event").set(next).catch(err => setSync("No se pudo guardar el evento: " + (err.message||err.code), true));
+});
+$("#pdfBtn").onclick = async () => {
+  try {
+    const r = await fetch("entradas.pdf"); if (!r.ok) throw new Error(r.status);
+    saveFile("entradas-evento.pdf", await r.blob());
+  } catch(e){ $("#dlNote").textContent = "No se pudo cargar el PDF."; }
+};
+async function saveFile(filename, data){
+  if (!downloads){ $("#dlNote").textContent = "Descargas no disponibles en esta vista."; return; }
+  try { await downloads.save({filename, data}); $("#dlNote").textContent = "Guardado: " + filename; }
+  catch(e){ $("#dlNote").textContent = e.code === "declined" ? "" : "No se pudo descargar (" + (e.code||e.message) + ")."; }
+}
+
+function setSync(msg, err){ const s = $("#sync"); s.textContent = msg; s.classList.toggle("err", !!err); }
+function renderAll(){ renderCount(); renderList(); renderGrid(); }
+
+/* ---------- validation ---------- */
+function showResult(kind, big, detail, code){
+  const r = $("#result");
+  r.className = "result " + kind;
+  r.innerHTML = `<div class="big">${esc(big)}</div>${detail ? `<div class="detail">${esc(detail)}</div>` : ""}${code ? `<div class="code">${esc(code)}</div>` : ""}`;
+  void r.offsetWidth; r.classList.add("flash");
+  try { navigator.vibrate && navigator.vibrate(kind === "ok" ? 80 : [60,60,60]); } catch(e){}
+}
+let busy = false;
+async function validate(raw){
+  const tok = String(raw||"").trim().toUpperCase();
+  if (!tok) return;
+  const t = byToken.get(tok);
+  if (!t){ showResult("bad", "QR NO VÁLIDO", "Este código no es una entrada del evento.", tok); return; }
+  const who = guests[tok] ? guests[tok] + " · " : "";
+  if (!db){ showResult("warn", "SIN CONEXIÓN", "No se puede confirmar si ya se usó. Esperá a que conecte la lista.", tok); return; }
+  if (busy) return; busy = true;
+  showResult("", "Verificando…", `Entrada N° ${t.n}`, tok);
+  try {
+    const ref = db.doc("checkins/" + tok);
+    const lease = await ref.acquire({holder: tabId, ttlMs: 4000});
+    if (!lease.acquired){ showResult("bad", "YA SE ESTÁ USANDO", "Otro dispositivo validó este QR en este mismo momento.", tok); return; }
+    const snap = await ref.get();
+    const d = snap.exists ? snap.data() : null;
+    if (d && d.at){
+      showResult("bad", "YA INGRESÓ", `${who}Entrada N° ${t.n} · usada a las ${fmtTime(d.at)}`, tok);
+      return;
+    }
+    const at = new Date().toISOString();
+    await ref.set({n: t.n, at, by: me || ""});
+    checkins[tok] = {n: t.n, at}; renderCount(); renderList();
+    showResult("ok", "ADELANTE", `${who}Entrada N° ${t.n} · ${fmtTime(at)}`, tok);
+  } catch(err){
+    showResult("warn", "NO SE PUDO VALIDAR", "Revisá la conexión y escaneá de nuevo. (" + (err.code||err.message) + ")", tok);
+  } finally { busy = false; }
+}
+$("#manualForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("#manualInput").value; $("#manualInput").value = "";
+  validate(v);
+});
+
+/* ---------- photo decode ---------- */
+async function decodeFile(file){
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    if ("BarcodeDetector" in window){
+      try { const r = await new BarcodeDetector({formats:["qr_code"]}).detect(img); if (r.length) return r[0].rawValue; } catch(e){}
+    }
+    if (typeof jsQR !== "function") return null;
+    for (const max of [1000, 1600, 600]){
+      const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+      const c = document.createElement("canvas"); c.width = w; c.height = h;
+      const ctx = c.getContext("2d", {willReadFrequently:true}); ctx.drawImage(img, 0, 0, w, h);
+      const r = jsQR(ctx.getImageData(0,0,w,h).data, w, h, {inversionAttempts:"attemptBoth"});
+      if (r && r.data) return r.data;
+    }
+    return null;
+  } finally { URL.revokeObjectURL(url); }
+}
+$("#photo").addEventListener("change", async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  showResult("", "Leyendo QR…", "");
+  let code = null;
+  try { code = await decodeFile(f); } catch(err){}
+  if (!code){ showResult("warn", "NO SE LEYÓ EL QR", "Sacá la foto más cerca y con buena luz, o escribí el código impreso."); return; }
+  validate(code);
+});
+
+/* ---------- data ---------- */
+renderAll();
+(async () => {
+  if (!window.claude){ setSync("Abrí esta página desde claude.ai para usar la lista compartida.", true); return; }
+  const [d, dl, user] = await Promise.all([claude.use("db"), claude.use("downloads"), claude.use("user")]);
+  downloads = dl;
+  if (user){ try { me = await user.id(); } catch(e){} }
+  if (!d){ setSync("Iniciá sesión para validar entradas. Sin conexión no se puede marcar el ingreso.", true); renderGrid(); return; }
+  db = d;
+  let gotC = false, gotG = false;
+  const timer = setTimeout(() => setSync("La lista compartida no responde todavía. Revisá la conexión.", true), 10000);
+  const ready = () => { if (gotC && gotG){ clearTimeout(timer); setSync("Lista sincronizada en vivo entre todos los dispositivos."); } };
+  db.collection("checkins").onSnapshot(s => {
+    checkins = {}; s.docs.forEach(doc => { checkins[doc.id] = doc.data() || {}; });
+    if (!s.metadata || !s.metadata.fromCache){ gotC = true; ready(); }
+    renderCount(); renderList();
+  }, err => { clearTimeout(timer); setSync("Error de la lista: " + (err.code||err.message), true); });
+  db.collection("guests").onSnapshot(s => {
+    guests = {}; sent = {};
+    s.docs.forEach(doc => { const d = doc.data()||{}; guests[doc.id] = d.name || ""; if (d.sentAt) sent[doc.id] = d.sentAt; });
+    if (!s.metadata || !s.metadata.fromCache){ gotG = true; ready(); }
+    renderList(); renderGrid();
+  }, err => { clearTimeout(timer); setSync("Error de la lista: " + (err.code||err.message), true); });
+  db.doc("settings/event").onSnapshot(s => {
+    const d = (s.exists && s.data()) || {};
+    eventInfo = {name: d.name || "", date: d.date || "", place: d.place || ""};
+    renderEvent();
+  }, () => {});
+  renderAll();
+})();
+</script>
