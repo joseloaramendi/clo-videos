@@ -273,7 +273,7 @@ async function ticketBlob(t){
   x.fillStyle = "#FFFFFF"; fit(ev, "800 {s}px Archivo, 'Arial Narrow', sans-serif", 96, 960); x.fillText(ev, W/2, 185);
   const sub = [eventInfo.date, eventInfo.place].filter(Boolean).join("  ·  ");
   if (sub){ x.fillStyle = "#CFE6DC"; fit(sub, "500 {s}px 'IBM Plex Sans', sans-serif", 40, 960); x.fillText(sub, W/2, 262); }
-  x.fillStyle = "#5E6A64"; x.font = "600 30px 'IBM Plex Sans', sans-serif"; x.fillText("ENTRADA PERSONAL  ·  N° " + pad(t.n), W/2, 420);
+  x.fillStyle = "#5E6A64"; x.font = "600 30px 'IBM Plex Sans', sans-serif"; x.fillText("ENTRADA PERSONAL", W/2, 420);
   const nm = guests[t.t] || "Invitado";
   x.fillStyle = "#16201C"; fit(nm, "800 {s}px Archivo, 'Arial Narrow', sans-serif", 88, 960); x.fillText(nm, W/2, 515);
   const q = await loadImg(t.img); x.imageSmoothingEnabled = false; const qs = 700; x.drawImage(q, (W-qs)/2, 580, qs, qs);
@@ -299,7 +299,7 @@ $("#grid").addEventListener("click", async e => {
   try {
     const blob = await ticketBlob(t);
     const nm = (guests[tok]||"").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^A-Za-z0-9 ]/g,"").trim().replace(/ +/g,"-");
-    const filename = `entrada-${pad(t.n)}${nm ? "-" + nm : ""}.png`;
+    const filename = nm ? `entrada-${nm}.png` : `entrada-${pad(t.n)}.png`;
     let ok = false;
     if (downloads){
       try { await downloads.save({filename, data: blob}); ok = true; $("#dlNote").textContent = "Guardada: " + filename; }
